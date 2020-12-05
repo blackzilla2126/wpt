@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Resource Timing - test that unsuccessful iframes create entries</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<body>
+<script>
+promise_test(() => {
+  const entries = performance.getEntriesByType("resource");
+  assert_equals(entries.length, 2, "Precondition - Entries for blocking scripts fired");
+  return Promise.resolve();
+}, "Precondition");
+
+const nonexistent_url = "https://nonexistent.{{host}}:{{ports[http][0]}}/";
+promise_test(t => {
+  return new Promise(resolve => {
+    const po = new PerformanceObserver(t.step_func(list => {
+      const entries = list.getEntriesByName(nonexistent_url);
+      assert_equals(entries.length, 1);
+      resolve();
+    }));
+    po.observe({type: "resource"});
+    const frame = document.createElement("iframe");
+    frame.src = nonexistent_url;
+    document.body.appendChild(frame);
+  });
+}, "Test iframe from non-existent host");
+
+promise_test(t => {
+  return new Promise(resolve => {
+    const url = new URL("resources/fake_responses.py?redirect=" + nonexistent_url, location.href);
+    const po = new PerformanceObserver(t.step_func(list => {
+      const entries = list.getEntriesByName(url);
+      assert_equals(entries.length, 1);
+      resolve();
+    }));
+    po.observe({type: "resource"});
+    const frame = document.createElement("iframe");
+    frame.src = url;
+    document.body.appendChild(frame);
+  });
+}, "Test iframe redirecting to non-existent host");
+</script>
+</body>
+</html>
